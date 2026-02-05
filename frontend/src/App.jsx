@@ -1,26 +1,37 @@
-import { useState } from 'react'
-import './App.css'
-import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './auth/Login';
+import Register from './auth/Register';
+import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './auth/ProtectedRoute';
+import { isAuthenticated } from './auth/authService';
 
 function App() {
-const [status,setStatus]=useState("");
-
-useEffect(()=>{
-  fetch(import.meta.env.VITE_API_URL+"/api/health")
-    .then(response => response.json())
-    .then(data => setStatus(data))
-    .catch(error => setStatus("Error fetching status"));
-},[])
   return (
-    <>
-      <div>
-        <h1>Bus Pass Management System</h1>
-        <p>Welcome to the Bus Pass Management System frontend!</p>
-        <p>{status.status}</p>
-        <p>{status.message}</p>
-      </div>
-    </>
-  )
+    <Router>
+      <Routes>
+        <Route 
+          path="/" 
+          element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} 
+        />
+        <Route 
+          path="/login" 
+          element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Login />} 
+        />
+        <Route 
+          path="/register" 
+          element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Register />} 
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

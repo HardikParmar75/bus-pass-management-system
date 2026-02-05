@@ -1,7 +1,8 @@
-import express from 'express';
-import cors from 'cors';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const adminRoutes = require('./routes/admin.routes.js');
 
 dotenv.config();
 const app = express();
@@ -26,6 +27,9 @@ app.get('/', (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "Backend running 🚀" ,message:"Health API Running..."});
 });
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
