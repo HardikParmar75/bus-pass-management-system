@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const adminRoutes = require('./routes/admin.routes.js');
+const userRoutes = require('./routes/user.routes.js');
 
 dotenv.config();
 const app = express();
@@ -30,6 +31,9 @@ app.get("/api/health", (req, res) => {
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
+
+// User routes
+app.use('/api/user', userRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
