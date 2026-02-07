@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login } from './authService';
+import { login, isAuthenticated } from './authService';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +10,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const { email, password } = formData;
 
@@ -42,28 +48,6 @@ const Login = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background-light">
-      {/* Top Navigation */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 bg-white px-6 md:px-20 py-3">
-        <div className="flex items-center gap-4 text-primary">
-          <div className="w-8 h-8">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path clipRule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fill="currentColor" fillRule="evenodd"></path>
-            </svg>
-          </div>
-          <h2 className="text-slate-900 text-lg font-bold leading-tight tracking-[-0.015em]">Transport Department</h2>
-        </div>
-        <div className="flex flex-1 justify-end gap-8">
-          <div className="hidden md:flex items-center gap-9">
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Home</a>
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Routes</a>
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Contact</a>
-          </div>
-          <button className="cursor-pointer rounded-lg h-10 px-4 bg-primary hover:bg-primary/90 text-white text-sm font-bold leading-normal transition-colors">
-            <span>Help</span>
-          </button>
-        </div>
-      </header>
-
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-xl overflow-hidden border border-slate-200 shadow-lg">
@@ -161,7 +145,7 @@ const Login = () => {
 
               {/* Secondary Links */}
               <div className="text-center pt-2">
-                <a className="text-primary text-sm font-semibold hover:underline" href="#">Forgot Password?</a>
+                <Link to="/forgot-password" className="text-primary text-sm font-semibold hover:underline">Forgot Password?</Link>
               </div>
             </form>
 
@@ -181,11 +165,6 @@ const Login = () => {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center border-t border-slate-200 bg-white">
-        <p className="text-xs text-slate-400">© 2024 National Transport Authority. All rights reserved.</p>
-      </footer>
     </div>
   );
 };

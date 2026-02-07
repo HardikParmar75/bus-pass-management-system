@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const { createUser, getAllUsers, getUserById, updateUser, deleteUser, toggleUserStatus } = require("../controllers/user.controller.js");
-const { loginUser, changeUserPassword } = require("../controllers/userAuth.controller.js");
+const { loginUser, changeUserPassword, requestPasswordReset, resetPassword } = require("../controllers/userAuth.controller.js");
 const { protect, protectUser } = require("../middleware/auth.js");
 
 // ==================== Authentication Routes ====================
 // Public routes (no authentication required)
 router.post("/register", createUser);
 router.post("/login", loginUser);
+router.post("/forgot-password", requestPasswordReset);
+router.post("/reset-password", resetPassword);
 
 // ==================== User Profile Routes ====================
 // Get current user profile (protected)

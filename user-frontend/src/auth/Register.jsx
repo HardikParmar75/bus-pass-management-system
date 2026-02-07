@@ -13,13 +13,68 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordFeedback, setPasswordFeedback] = useState('');
   const navigate = useNavigate();
 
   const { name, email, phone, age, password, confirmPassword } = formData;
 
+  // Calculate password strength
+  const calculatePasswordStrength = (pwd) => {
+    let strength = 0;
+    const feedback = [];
+
+    if (!pwd) {
+      setPasswordStrength(0);
+      setPasswordFeedback('');
+      return;
+    }
+
+    if (pwd.length >= 8) strength += 20;
+    else if (pwd.length >= 6) strength += 10;
+    else feedback.push('At least 8 characters');
+
+    if (/[a-z]/.test(pwd)) strength += 20;
+    else feedback.push('Add lowercase letter');
+
+    if (/[A-Z]/.test(pwd)) strength += 20;
+    else feedback.push('Add uppercase letter');
+
+    if (/[0-9]/.test(pwd)) strength += 20;
+    else feedback.push('Add number');
+
+    if (/[^a-zA-Z0-9]/.test(pwd)) strength += 20;
+    else feedback.push('Add special character');
+
+    setPasswordStrength(strength);
+    setPasswordFeedback(feedback.join(' • '));
+  };
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength < 20) return 'bg-red-500';
+    if (passwordStrength < 40) return 'bg-orange-500';
+    if (passwordStrength < 60) return 'bg-yellow-500';
+    if (passwordStrength < 80) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength < 20) return 'Very Weak';
+    if (passwordStrength < 40) return 'Weak';
+    if (passwordStrength < 60) return 'Fair';
+    if (passwordStrength < 80) return 'Good';
+    return 'Strong';
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'password') {
+      calculatePasswordStrength(value);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,15 +92,38 @@ const Register = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must contain uppercase, lowercase, and numbers');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone)) {
+      setError('Phone number must be 10 digits');
+      return;
+    }
+
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 5 || ageNum > 120) {
+      setError('Please enter a valid age between 5 and 120');
       return;
     }
 
     setLoading(true);
 
     try {
-      await register({ name, email, phone, age: parseInt(age), password });
+      await register({ name, email, phone, age: ageNum, password });
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -55,28 +133,7 @@ const Register = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background-light">
-      {/* Top Navigation */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 bg-white px-6 md:px-20 py-3">
-        <div className="flex items-center gap-4 text-primary">
-          <div className="w-8 h-8">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path clipRule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fill="currentColor" fillRule="evenodd"></path>
-            </svg>
-          </div>
-          <h2 className="text-slate-900 text-lg font-bold leading-tight tracking-[-0.015em]">Transport Department</h2>
-        </div>
-        <div className="flex flex-1 justify-end gap-8">
-          <div className="hidden md:flex items-center gap-9">
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Home</a>
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Routes</a>
-            <a className="text-slate-600 text-sm font-medium hover:text-primary transition-colors" href="#">Contact</a>
-          </div>
-          <button className="cursor-pointer rounded-lg h-10 px-4 bg-primary hover:bg-primary/90 text-white text-sm font-bold leading-normal transition-colors">
-            <span>Help</span>
-          </button>
-        </div>
-      </header>
+    <div className=" flex flex-col bg-background-light">
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
@@ -198,36 +255,94 @@ const Register = () => {
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-12 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-xl">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
                 </div>
+                {password && (
+                  <div className="space-y-2">
+                    {/* Password Strength Bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${getPasswordStrengthColor()} transition-all`}
+                          style={{ width: `${passwordStrength}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs font-semibold text-slate-600 min-w-fit">
+                        {getPasswordStrengthText()}
+                      </span>
+                    </div>
+                    {passwordFeedback && (
+                      <p className="text-xs text-slate-500 leading-relaxed">{passwordFeedback}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
                 <label className="text-slate-700 text-sm font-semibold">Confirm Password</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock_check</span>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-12 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                      confirmPassword && password !== confirmPassword
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                        : confirmPassword && password === confirmPassword
+                        ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                        : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-xl">
+                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
                 </div>
+                {confirmPassword && (
+                  <div className="flex items-center gap-2">
+                    {password === confirmPassword ? (
+                      <>
+                        <span className="material-symbols-outlined text-green-500 text-xl">check_circle</span>
+                        <span className="text-xs text-green-600 font-medium">Passwords match</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-red-500 text-xl">cancel</span>
+                        <span className="text-xs text-red-600 font-medium">Passwords do not match</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Action Button */}
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (password && confirmPassword && password !== confirmPassword)}
                   className="w-full flex items-center justify-center rounded-lg h-12 px-5 bg-primary hover:bg-primary/90 disabled:bg-primary/60 text-white text-base font-bold leading-normal transition-colors shadow-md shadow-primary/20 gap-2 disabled:cursor-not-allowed"
                 >
                   <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
@@ -258,10 +373,6 @@ const Register = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 text-center border-t border-slate-200 bg-white">
-        <p className="text-xs text-slate-400">© 2024 National Transport Authority. All rights reserved.</p>
-      </footer>
     </div>
   );
 };

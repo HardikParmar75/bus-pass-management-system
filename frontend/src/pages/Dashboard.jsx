@@ -27,11 +27,6 @@ const Dashboard = () => {
     fetchProfile();
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background-light">

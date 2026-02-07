@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './auth/Login';
 import Register from './auth/Register';
+import ForgotPassword from './auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import ProtectedRoute from './auth/ProtectedRoute';
+import RootLayout from './layout/RootLayout';
 import { isAuthenticated } from './auth/authService';
 import './App.css';
 
@@ -22,14 +25,16 @@ function App() {
           path="/register" 
           element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Register />} 
         />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
+        <Route 
+          path="/forgot-password" 
+          element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
         />
+
+        {/* Protected routes wrapped with layout (Navbar/Footer) */}
+        <Route element={<ProtectedRoute><RootLayout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
       </Routes>
     </Router>
   );
