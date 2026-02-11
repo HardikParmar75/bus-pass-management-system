@@ -57,6 +57,12 @@ const getAllAdmins = async (req, res) => {
 const getAdminById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Validate if id is a valid MongoDB ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid admin ID format" });
+    }
+
     const adminUser = await admin.findById(id).select('-password');
 
     if (!adminUser) {
@@ -77,6 +83,11 @@ const updateAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, role, isActive } = req.body;
+
+    // Validate if id is a valid MongoDB ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid admin ID format" });
+    }
 
     const adminUser = await admin.findById(id);
 
@@ -119,6 +130,11 @@ const deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validate if id is a valid MongoDB ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid admin ID format" });
+    }
+
     const adminUser = await admin.findByIdAndDelete(id);
 
     if (!adminUser) {
@@ -138,6 +154,11 @@ const deleteAdmin = async (req, res) => {
 const toggleAdminStatus = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Validate if id is a valid MongoDB ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid admin ID format" });
+    }
 
     const adminUser = await admin.findById(id);
 

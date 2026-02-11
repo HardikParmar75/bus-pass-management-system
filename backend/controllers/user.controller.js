@@ -60,6 +60,12 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Validate if id is a valid MongoDB ObjectId
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: "Invalid user ID format" });
+        }
+
         const userData = await user.findById(id).select('-password');
 
         if (!userData) {
@@ -80,6 +86,11 @@ const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, phone, age, isActive } = req.body;
+
+        // Validate if id is a valid MongoDB ObjectId
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: "Invalid user ID format" });
+        }
 
         const userData = await user.findById(id);
 
@@ -124,6 +135,11 @@ const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Validate if id is a valid MongoDB ObjectId
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: "Invalid user ID format" });
+        }
+
         const userData = await user.findByIdAndDelete(id);
 
         if (!userData) {
@@ -143,6 +159,11 @@ const deleteUser = async (req, res) => {
 const toggleUserStatus = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Validate if id is a valid MongoDB ObjectId
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: "Invalid user ID format" });
+        }
 
         const userData = await user.findById(id);
 

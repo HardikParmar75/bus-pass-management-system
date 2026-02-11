@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { createAdmin, getAllAdmins, getAdminById, updateAdmin, deleteAdmin, toggleAdminStatus } = require('../controllers/admin.controller.js');
 const { loginAdmin, changeAdminPassword } = require('../controllers/adminAuth.controller.js');
+const { getAllPasses, approvePass, rejectPass, verifyPass } = require('../controllers/busPass.controller.js');
 const { protect, protectAdmin, adminOnly, superAdminOnly } = require('../middleware/auth.js');
 
 // ==================== Authentication Routes ====================
@@ -24,6 +25,20 @@ router.get('/profile', protect, (req, res) => {
 
 // Change password (protected)
 router.put('/change-password', protect, changeAdminPassword);
+
+// ==================== Bus Pass Management Routes ====================
+// (MUST be before /:id to avoid wildcard conflict)
+// Get all bus passes (with optional ?status=pending filter)
+router.get('/bus-passes', protectAdmin, getAllPasses);
+
+// Approve a pending bus pass
+router.patch('/bus-passes/:id/approve', protectAdmin, approvePass);
+
+// Reject a pending bus pass
+router.patch('/bus-passes/:id/reject', protectAdmin, rejectPass);
+
+// Verify a bus pass by QR token or 16-char code
+router.post('/bus-passes/verify', protectAdmin, verifyPass);
 
 // ==================== Admin Management Routes ====================
 // Get all admins (superadmin only)

@@ -3,6 +3,7 @@ const router = express.Router();
 const { createUser, getAllUsers, getUserById, updateUser, deleteUser, toggleUserStatus } = require("../controllers/user.controller.js");
 const { loginUser, changeUserPassword, requestPasswordReset, resetPassword } = require("../controllers/userAuth.controller.js");
 const { protect, protectUser } = require("../middleware/auth.js");
+const busPassRoutes = require("./busPass.routes.js");
 
 // ==================== Authentication Routes ====================
 // Public routes (no authentication required)
@@ -28,6 +29,9 @@ router.get("/profile", protect, (req, res) => {
 // Change password (protected)
 router.put("/change-password", protect, changeUserPassword);
 
+// Mount bus pass routes (MUST be before /:id to avoid wildcard conflict)
+router.use("/bus-pass", busPassRoutes);
+
 // ==================== User Management Routes ====================
 // Get all users (protected - for admin dashboard)
 router.get("/", protect, getAllUsers);
@@ -43,5 +47,6 @@ router.delete("/:id", protect, deleteUser);
 
 // Toggle user status - activate/deactivate (protected)
 router.patch("/:id/toggle-status", protect, toggleUserStatus);
+
 
 module.exports = router;

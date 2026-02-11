@@ -1,5 +1,6 @@
 const admin = require("../models/admin.model.js");
 const generateToken = require("../utils/generateToken.js");
+const logger = require("../utils/logger.js");
 
 const loginAdmin = async (req, res) => {
   try {
@@ -7,6 +8,7 @@ const loginAdmin = async (req, res) => {
 
     // Validate input
     if (!email || !password) {
+      logger.warn(`Login attempt with missing credentials from IP: ${req.ip}`);
       return res.status(400).json({ message: "Please provide email and password" });
     }
 
@@ -14,11 +16,13 @@ const loginAdmin = async (req, res) => {
     const adminUser = await admin.findOne({ email });
 
     if (!adminUser) {
+      logger.warn(`Login attempt with non-existent email: ${email}`);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Check if admin is active
     if (!adminUser.isActive) {
+      logger.warn(`Login attempt on inactive account: ${email}`);
       return res.status(401).json({ message: "Admin account is inactive" });
     }
 
@@ -26,10 +30,12 @@ const loginAdmin = async (req, res) => {
     const isMatch = await adminUser.comparePassword(password);
 
     if (!isMatch) {
+      logger.warn(`Failed login for admin: ${email}`);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Return admin info with token
+    logger.success(`Admin login successful: ${email}`, { adminId: adminUser._id });
     res.status(200).json({
       success: true,
       _id: adminUser._id,
@@ -39,7 +45,7 @@ const loginAdmin = async (req, res) => {
       token: generateToken(adminUser._id),
     });
   } catch (error) {
-    console.error(error);
+    logger.error(`Error during admin login:`, { error: error.message });
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
