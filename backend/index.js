@@ -19,6 +19,8 @@ const corsOptions = {
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:8000',
+      "http://10.93.14.187:5174",
+      "http://10.183.181.187:5173",
       /^http:\/\/127\.0\.0\.1:\d+$/, // Allow localhost with any port
       /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Allow local network IPs (192.168.x.x)
       /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Allow 10.x.x.x network

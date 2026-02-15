@@ -16,7 +16,7 @@ const httpLog = (req, res, next) => {
 
     // Log request body for POST/PUT/PATCH requests
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-      if (Object.keys(req.body).length > 0) {
+      if (req.body && Object.keys(req.body).length > 0) {
         logger.debug(`Request body:`, req.body);
       }
     }
