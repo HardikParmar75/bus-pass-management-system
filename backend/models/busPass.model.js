@@ -32,6 +32,14 @@ const busPassSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    source: {
+      type: String,
+      required: true,
+    },
+    destination: {
+      type: String,
+      required: true,
+    },
     status: {
       type: String,
       enum: ["pending", "active", "rejected", "expired"],

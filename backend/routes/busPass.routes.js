@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { buyPass, getUserPasses, verifyPass } = require("../controllers/busPass.controller");
+const { buyPass, getUserPasses, verifyPass, getBusStops } = require("../controllers/busPass.controller");
 const { protectUser } = require("../middleware/auth");
+
+// Get available bus stops (public)
+router.get("/stops", getBusStops);
 
 // Buy a new bus pass (user only)
 router.post("/buy", protectUser, buyPass);

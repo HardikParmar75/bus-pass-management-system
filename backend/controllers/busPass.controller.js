@@ -10,10 +10,38 @@ const PASS_CONFIG = {
   yearly: { days: 365, price: 3500 },
 };
 
+const BUS_STOPS = [
+  "Ahmedabad (Paldi)",
+  "Ahmedabad (Maninagar)",
+  "Ahmedabad (Kalupur)",
+  "Gandhinagar",
+  "Nadiad",
+  "Anand",
+  "Vadodara",
+  "Bharuch",
+  "Surat",
+  "Navsari",
+  "Valsad",
+  "Vapi",
+  "Rajkot",
+  "Jamnagar",
+  "Junagadh",
+  "Bhavnagar",
+  "Morbi",
+  "Mehsana",
+  "Palanpur",
+  "Himmatnagar",
+];
+
+// Get available bus stops
+const getBusStops = (req, res) => {
+  res.status(200).json({ success: true, data: BUS_STOPS });
+};
+
 // User buys a pass — created as "pending", no QR yet
 const buyPass = async (req, res) => {
   try {
-    const { passType } = req.body;
+    const { passType, source, destination } = req.body;
     const userId = req.user._id;
 
     const config = PASS_CONFIG[passType];
@@ -21,10 +49,20 @@ const buyPass = async (req, res) => {
       return res.status(400).json({ message: "Invalid pass type" });
     }
 
+    if (!source || !destination) {
+      return res.status(400).json({ message: "Source and destination are required" });
+    }
+
+    if (source === destination) {
+      return res.status(400).json({ message: "Source and destination cannot be the same" });
+    }
+
     const newPass = await busPass.create({
       user: userId,
       passType,
       price: config.price,
+      source,
+      destination,
       status: "pending",
     });
 
@@ -34,6 +72,8 @@ const buyPass = async (req, res) => {
         _id: newPass._id,
         passType: newPass.passType,
         price: newPass.price,
+        source: newPass.source,
+        destination: newPass.destination,
         status: newPass.status,
         createdAt: newPass.createdAt,
       },
@@ -212,6 +252,8 @@ const verifyPass = async (req, res) => {
         userEmail: pass.user.email,
         userPhone: pass.user.phone,
         passType: pass.passType,
+        source: pass.source,
+        destination: pass.destination,
         validFrom: pass.validFrom,
         validTill: pass.validTill,
         status: pass.status,
@@ -223,4 +265,4 @@ const verifyPass = async (req, res) => {
   }
 };
 
-module.exports = { buyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass };
+module.exports = { buyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass, getBusStops };
