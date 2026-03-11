@@ -39,8 +39,8 @@ const Profile = () => {
             <p className="font-medium">{profile?.phone || 'Not provided'}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase">Age</p>
-            <p className="font-medium">{profile?.age || 'Not provided'}</p>
+            <p className="text-xs text-slate-500 uppercase">Date of Birth</p>
+            <p className="font-medium">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not provided'}</p>
           </div>
         </div>
       </div>

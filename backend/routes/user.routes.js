@@ -21,7 +21,7 @@ router.get("/profile", protect, (req, res) => {
         name: req.user.name,
         email: req.user.email,
         phone: req.user.phone,
-        age: req.user.age,
+        dateOfBirth: req.user.dateOfBirth,
         isActive: req.user.isActive,
     });
 });

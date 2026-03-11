@@ -10,40 +10,115 @@ const Register = () => {
     confirmPassword: '',
     role: 'admin',
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const { name, email, password, confirmPassword, role } = formData;
 
+  // Regex patterns
+  const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/;
+
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'name':
+        if (!value.trim()) {
+          newErrors.name = 'Name is required';
+        } else if (!nameRegex.test(value.trim())) {
+          newErrors.name = 'Name must be 2-50 characters, letters and spaces only';
+        } else {
+          delete newErrors.name;
+        }
+        break;
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Please enter a valid email address';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required';
+        } else if (!passwordRegex.test(value)) {
+          newErrors.password = 'Must be 6+ chars with uppercase, lowercase & number';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+      case 'confirmPassword':
+        if (!value) {
+          newErrors.confirmPassword = 'Please confirm your password';
+        } else if (value !== password) {
+          newErrors.confirmPassword = 'Passwords do not match';
+        } else {
+          delete newErrors.confirmPassword;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
+    const newErrors = {};
+
+    if (!name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (!nameRegex.test(name.trim())) {
+      newErrors.name = 'Name must be 2-50 characters, letters and spaces only';
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (!passwordRegex.test(password)) {
+      newErrors.password = 'Must be 6+ chars with uppercase, lowercase & number';
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      setError('Please fix the errors below');
       return;
     }
 
     setLoading(true);
 
     try {
-      await register({ name, email, password, role });
+      await register({ name: name.trim(), email, password, role });
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -88,7 +163,7 @@ const Register = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide">
                 Full Name
               </label>
@@ -98,15 +173,19 @@ const Register = () => {
                   name="name"
                   value={name}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                   placeholder="Enter your full name"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.name ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </div>
 
             {/* Email Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide">
                 Official Admin Email
               </label>
@@ -116,15 +195,19 @@ const Register = () => {
                   name="email"
                   value={email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                   placeholder="e.g. admin@transport.gov"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.email ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </div>
 
             {/* Password Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide">
                 Password
               </label>
@@ -134,16 +217,19 @@ const Register = () => {
                   name="password"
                   value={password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
-                  minLength="6"
                   placeholder="••••••••"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.password ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
             </div>
 
             {/* Confirm Password Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide">
                 Confirm Password
               </label>
@@ -153,12 +239,15 @@ const Register = () => {
                   name="confirmPassword"
                   value={confirmPassword}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
-                  minLength="6"
                   placeholder="••••••••"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.confirmPassword ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
             </div>
 
             {/* Access Level Dropdown */}
@@ -176,6 +265,7 @@ const Register = () => {
                 >
                   <option value="admin">Admin</option>
                   <option value="superadmin">Super Admin</option>
+                  <option value="conductor">Conductor</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                   <span className="material-symbols-outlined text-lg">expand_more</span>

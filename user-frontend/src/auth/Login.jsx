@@ -7,6 +7,7 @@ const Login = () => {
     email: '',
     password: '',
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -19,22 +20,72 @@ const Login = () => {
 
   const { email, password } = formData;
 
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Please enter a valid email address';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required';
+        } else if (value.length < 8) {
+          newErrors.password = 'Password must be at least 8 characters';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
-    // Validation
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      setLoading(false);
+    const newErrors = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
       return;
     }
+
+    setLoading(true);
 
     try {
       await login({ email, password });
@@ -101,7 +152,7 @@ const Login = () => {
 
             {/* Input Fields */}
             <form onSubmit={handleSubmit} className="space-y-6 flex flex-col max-w-md">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Email Address</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">mail</span>
@@ -110,13 +161,17 @@ const Login = () => {
                     name="email"
                     value={email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="your.email@example.com"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-14 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-14 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all ${
+                      errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
                 </div>
+                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Password</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
@@ -125,10 +180,14 @@ const Login = () => {
                     name="password"
                     value={password}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-14 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-14 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all ${
+                      errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
                 </div>
+                {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
               </div>
 
               {/* Action Button */}

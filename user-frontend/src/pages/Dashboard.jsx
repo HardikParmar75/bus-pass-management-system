@@ -3,13 +3,6 @@ import { getCurrentUser, getProfile } from '../auth/authService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-const PASS_OPTIONS = [
-  { type: 'monthly', label: 'Monthly', price: 500, days: 30 },
-  { type: 'quarterly', label: 'Quarterly', price: 1200, days: 90 },
-  { type: 'half-yearly', label: 'Half-Yearly', price: 2000, days: 180 },
-  { type: 'yearly', label: 'Yearly', price: 3500, days: 365 },
-];
-
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -20,6 +13,8 @@ const Dashboard = () => {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
   const [selectedPassType, setSelectedPassType] = useState(null);
+  const [fareData, setFareData] = useState(null);
+  const [fareLoading, setFareLoading] = useState(false);
 
   const getAuthHeaders = () => {
     const u = getCurrentUser();
@@ -51,6 +46,25 @@ const Dashboard = () => {
     }
   };
 
+  const fetchFare = async (src, dest) => {
+    if (!src || !dest || src === dest) {
+      setFareData(null);
+      return;
+    }
+    setFareLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/user/bus-pass/fare?source=${encodeURIComponent(src)}&destination=${encodeURIComponent(dest)}`);
+      const data = await res.json();
+      if (data.success) {
+        setFareData(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching fare:', err);
+    } finally {
+      setFareLoading(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       const currentUser = getCurrentUser();
@@ -71,6 +85,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (!loading) fetchPasses();
   }, [loading]);
+
+  // Fetch fare when source or destination changes
+  useEffect(() => {
+    fetchFare(source, destination);
+  }, [source, destination]);
 
   const buyPass = async (passType) => {
     if (!source || !destination) {
@@ -93,6 +112,7 @@ const Dashboard = () => {
       setSource('');
       setDestination('');
       setSelectedPassType(null);
+      setFareData(null);
       fetchPasses();
     } catch (err) {
       console.error('Buy pass error', err);
@@ -133,6 +153,24 @@ const Dashboard = () => {
     );
   };
 
+  // Get pass options from fare data or fallback
+  const getPassOptions = () => {
+    if (fareData) {
+      return [
+        { type: 'monthly', label: 'Monthly', price: fareData.fares.monthly.price, days: fareData.fares.monthly.days },
+        { type: 'quarterly', label: 'Quarterly', price: fareData.fares.quarterly.price, days: fareData.fares.quarterly.days },
+        { type: 'half-yearly', label: 'Half-Yearly', price: fareData.fares['half-yearly'].price, days: fareData.fares['half-yearly'].days },
+        { type: 'yearly', label: 'Yearly', price: fareData.fares.yearly.price, days: fareData.fares.yearly.days },
+      ];
+    }
+    return [
+      { type: 'monthly', label: 'Monthly', price: '—', days: 30 },
+      { type: 'quarterly', label: 'Quarterly', price: '—', days: 90 },
+      { type: 'half-yearly', label: 'Half-Yearly', price: '—', days: 180 },
+      { type: 'yearly', label: 'Yearly', price: '—', days: 365 },
+    ];
+  };
+
   return (
     <div className="min-h-screen bg-background-light">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 py-6 sm:py-8">
@@ -161,8 +199,8 @@ const Dashboard = () => {
                 <div className="flex items-center gap-3 text-slate-700">
                   <span className="material-symbols-outlined text-primary text-lg sm:text-xl">cake</span>
                   <div>
-                    <p className="text-xs text-slate-500 font-semibold uppercase">Age</p>
-                    <p className="font-medium text-sm sm:text-base">{user?.age || profile?.age || 'Not provided'}</p>
+                    <p className="text-xs text-slate-500 font-semibold uppercase">Date of Birth</p>
+                    <p className="font-medium text-sm sm:text-base">{user?.dateOfBirth || profile?.dateOfBirth ? new Date(user?.dateOfBirth || profile?.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-700">
@@ -291,7 +329,7 @@ const Dashboard = () => {
         {!activePass && !pendingPass && (
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 sm:p-6 md:p-8 mb-6">
             <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Buy a Bus Pass</h3>
-            <p className="text-sm text-slate-600 mb-6">Select your route and pass type to purchase. After buying, an admin will review and approve your request.</p>
+            <p className="text-sm text-slate-600 mb-6">Select your route and pass type to purchase. Fare is calculated based on the distance between stops.</p>
 
             {/* Route Selection */}
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 sm:p-5 mb-6">
@@ -336,17 +374,24 @@ const Dashboard = () => {
                 </div>
               </div>
               {source && destination && source !== destination && (
-                <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-2 sm:gap-3 justify-center flex-wrap">
-                  <span className="font-semibold text-primary text-sm">{source}</span>
-                  <span className="material-symbols-outlined text-primary text-lg">arrow_forward</span>
-                  <span className="font-semibold text-primary text-sm">{destination}</span>
+                <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 justify-center flex-wrap">
+                    <span className="font-semibold text-primary text-sm">{source}</span>
+                    <span className="material-symbols-outlined text-primary text-lg">arrow_forward</span>
+                    <span className="font-semibold text-primary text-sm">{destination}</span>
+                  </div>
+                  {fareData && (
+                    <p className="text-center text-xs text-slate-500 mt-2">
+                      Approx. distance: <strong>{fareData.distanceKm} km</strong>
+                    </p>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Pass Type Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {PASS_OPTIONS.map((opt) => (
+              {getPassOptions().map((opt) => (
                 <div
                   key={opt.type}
                   className={`border rounded-lg p-4 sm:p-5 transition-all cursor-pointer ${
@@ -357,14 +402,20 @@ const Dashboard = () => {
                   onClick={() => setSelectedPassType(opt.type)}
                 >
                   <h4 className="font-bold text-slate-900 text-base sm:text-lg">{opt.label}</h4>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary mt-2">{opt.price}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary mt-2">
+                    {fareLoading ? (
+                      <span className="text-lg text-slate-400">Calculating...</span>
+                    ) : (
+                      typeof opt.price === 'number' ? `₹${opt.price}` : opt.price
+                    )}
+                  </p>
                   <p className="text-sm text-slate-500 mt-1">{opt.days} days validity</p>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       buyPass(opt.type);
                     }}
-                    disabled={buying || !source || !destination || source === destination}
+                    disabled={buying || !source || !destination || source === destination || !fareData}
                     className="mt-4 w-full px-4 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {buying ? 'Processing...' : 'Buy Now'}
@@ -376,7 +427,7 @@ const Dashboard = () => {
             {(!source || !destination) && (
               <p className="text-xs text-slate-400 mt-3 text-center flex items-center justify-center gap-1">
                 <span className="material-symbols-outlined text-sm">info</span>
-                Please select source and destination before buying a pass
+                Please select source and destination to see fare prices
               </p>
             )}
           </div>

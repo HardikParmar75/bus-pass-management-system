@@ -3,39 +3,119 @@ const jwt = require("jsonwebtoken");
 const { generateQR } = require("../utils/qr");
 const crypto = require("crypto");
 
-const PASS_CONFIG = {
-  monthly: { days: 30, price: 500 },
-  quarterly: { days: 90, price: 1200 },
-  "half-yearly": { days: 180, price: 2000 },
-  yearly: { days: 365, price: 3500 },
+// Duration multipliers for pass types
+const PASS_DURATION = {
+  monthly: { days: 30, multiplier: 1 },
+  quarterly: { days: 90, multiplier: 2.4 },
+  "half-yearly": { days: 180, multiplier: 4 },
+  yearly: { days: 365, multiplier: 7 },
 };
 
-const BUS_STOPS = [
-  "Ahmedabad (Paldi)",
-  "Ahmedabad (Maninagar)",
-  "Ahmedabad (Kalupur)",
-  "Gandhinagar",
-  "Nadiad",
-  "Anand",
-  "Vadodara",
-  "Bharuch",
-  "Surat",
-  "Navsari",
-  "Valsad",
-  "Vapi",
-  "Rajkot",
-  "Jamnagar",
-  "Junagadh",
-  "Bhavnagar",
-  "Morbi",
-  "Mehsana",
-  "Palanpur",
-  "Himmatnagar",
-];
+// Base rate per km (for monthly pass)
+const BASE_RATE_PER_KM = 3;
+const MIN_FARE = 200;
+
+// Bus stops with approximate coordinates (lat, lon) for distance calculation
+const BUS_STOPS_DATA = {
+  "Ahmedabad (Paldi)": { lat: 23.0225, lon: 72.5714 },
+  "Ahmedabad (Maninagar)": { lat: 23.0054, lon: 72.6015 },
+  "Ahmedabad (Kalupur)": { lat: 23.0301, lon: 72.6003 },
+  "Gandhinagar": { lat: 23.2156, lon: 72.6369 },
+  "Nadiad": { lat: 22.6916, lon: 72.8634 },
+  "Anand": { lat: 22.5645, lon: 72.9289 },
+  "Vadodara": { lat: 22.3072, lon: 73.1812 },
+  "Bharuch": { lat: 21.7051, lon: 72.9959 },
+  "Surat": { lat: 21.1702, lon: 72.8311 },
+  "Navsari": { lat: 20.9467, lon: 72.9520 },
+  "Valsad": { lat: 20.5992, lon: 72.9342 },
+  "Vapi": { lat: 20.3893, lon: 72.9106 },
+  "Rajkot": { lat: 22.3039, lon: 70.8022 },
+  "Jamnagar": { lat: 22.4707, lon: 70.0577 },
+  "Junagadh": { lat: 21.5222, lon: 70.4579 },
+  "Bhavnagar": { lat: 21.7645, lon: 72.1519 },
+  "Morbi": { lat: 22.8173, lon: 70.8377 },
+  "Mehsana": { lat: 23.5880, lon: 72.3693 },
+  "Palanpur": { lat: 24.1725, lon: 72.4384 },
+  "Himmatnagar": { lat: 23.5969, lon: 72.9660 },
+};
+
+const BUS_STOPS = Object.keys(BUS_STOPS_DATA);
+
+// Haversine formula to calculate distance between two coordinates in km
+const calculateDistance = (source, destination) => {
+  const srcData = BUS_STOPS_DATA[source];
+  const destData = BUS_STOPS_DATA[destination];
+
+  if (!srcData || !destData) return 0;
+
+  const R = 6371; // Earth's radius in km
+  const dLat = ((destData.lat - srcData.lat) * Math.PI) / 180;
+  const dLon = ((destData.lon - srcData.lon) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((srcData.lat * Math.PI) / 180) *
+      Math.cos((destData.lat * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightLine = R * c;
+
+  // Multiply by 1.3 to approximate road distance
+  return Math.round(straightLine * 1.3);
+};
+
+// Calculate fare based on route and pass type
+const calculateFare = (source, destination, passType) => {
+  const duration = PASS_DURATION[passType];
+  if (!duration) return 0;
+
+  const distanceKm = calculateDistance(source, destination);
+  const monthlyFare = Math.max(distanceKm * BASE_RATE_PER_KM, MIN_FARE);
+  const totalFare = Math.round(monthlyFare * duration.multiplier);
+
+  return totalFare;
+};
 
 // Get available bus stops
 const getBusStops = (req, res) => {
   res.status(200).json({ success: true, data: BUS_STOPS });
+};
+
+// Calculate fare for a route (public endpoint for frontend price display)
+const getFare = (req, res) => {
+  const { source, destination } = req.query;
+
+  if (!source || !destination) {
+    return res.status(400).json({ message: "Source and destination are required" });
+  }
+
+  if (!BUS_STOPS_DATA[source] || !BUS_STOPS_DATA[destination]) {
+    return res.status(400).json({ message: "Invalid bus stop" });
+  }
+
+  if (source === destination) {
+    return res.status(400).json({ message: "Source and destination cannot be the same" });
+  }
+
+  const distanceKm = calculateDistance(source, destination);
+
+  const fares = {};
+  for (const [type, config] of Object.entries(PASS_DURATION)) {
+    fares[type] = {
+      price: calculateFare(source, destination, type),
+      days: config.days,
+    };
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      source,
+      destination,
+      distanceKm,
+      fares,
+    },
+  });
 };
 
 // User buys a pass — created as "pending", no QR yet
@@ -44,8 +124,8 @@ const buyPass = async (req, res) => {
     const { passType, source, destination } = req.body;
     const userId = req.user._id;
 
-    const config = PASS_CONFIG[passType];
-    if (!config) {
+    const duration = PASS_DURATION[passType];
+    if (!duration) {
       return res.status(400).json({ message: "Invalid pass type" });
     }
 
@@ -57,10 +137,16 @@ const buyPass = async (req, res) => {
       return res.status(400).json({ message: "Source and destination cannot be the same" });
     }
 
+    if (!BUS_STOPS_DATA[source] || !BUS_STOPS_DATA[destination]) {
+      return res.status(400).json({ message: "Invalid bus stop selected" });
+    }
+
+    const price = calculateFare(source, destination, passType);
+
     const newPass = await busPass.create({
       user: userId,
       passType,
-      price: config.price,
+      price,
       source,
       destination,
       status: "pending",
@@ -102,10 +188,10 @@ const approvePass = async (req, res) => {
       return res.status(400).json({ message: `Pass is already ${pass.status}` });
     }
 
-    const config = PASS_CONFIG[pass.passType];
+    const duration = PASS_DURATION[pass.passType];
     const validFrom = new Date();
     const validTill = new Date();
-    validTill.setDate(validFrom.getDate() + config.days);
+    validTill.setDate(validFrom.getDate() + duration.days);
 
     const code16 = crypto.randomBytes(8).toString("hex").toUpperCase();
     const { token, qrImage } = await generateQR({
@@ -194,7 +280,7 @@ const getAllPasses = async (req, res) => {
 
     const passes = await busPass
       .find(filter)
-      .populate("user", "name email phone age")
+      .populate("user", "name email phone dateOfBirth")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: passes });
@@ -214,7 +300,7 @@ const verifyPass = async (req, res) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        pass = await busPass.findById(decoded.passId).populate("user", "name email phone age");
+        pass = await busPass.findById(decoded.passId).populate("user", "name email phone dateOfBirth");
       } catch (jwtError) {
         console.error("JWT Verification Error:", jwtError.message);
         return res.status(400).json({ message: "Invalid or malformed token" });
@@ -224,7 +310,7 @@ const verifyPass = async (req, res) => {
       if (!code || typeof code !== "string" || code.length !== 16) {
         return res.status(400).json({ message: "Invalid code format" });
       }
-      pass = await busPass.findOne({ code16: code }).populate("user", "name email phone age");
+      pass = await busPass.findOne({ code16: code }).populate("user", "name email phone dateOfBirth");
     } else {
       return res.status(400).json({ message: "Provide token or code to verify" });
     }
@@ -254,6 +340,7 @@ const verifyPass = async (req, res) => {
         passType: pass.passType,
         source: pass.source,
         destination: pass.destination,
+        price: pass.price,
         validFrom: pass.validFrom,
         validTill: pass.validTill,
         status: pass.status,
@@ -265,4 +352,4 @@ const verifyPass = async (req, res) => {
   }
 };
 
-module.exports = { buyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass, getBusStops };
+module.exports = { buyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass, getBusStops, getFare };

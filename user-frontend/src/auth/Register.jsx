@@ -7,10 +7,11 @@ const Register = () => {
     name: '',
     email: '',
     phone: '',
-    age: '',
+    dateOfBirth: '',
     password: '',
     confirmPassword: '',
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +20,13 @@ const Register = () => {
   const [passwordFeedback, setPasswordFeedback] = useState('');
   const navigate = useNavigate();
 
-  const { name, email, phone, age, password, confirmPassword } = formData;
+  const { name, email, phone, dateOfBirth, password, confirmPassword } = formData;
+
+  // Regex patterns
+  const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const phoneRegex = /^[6-9][0-9]{9}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   // Calculate password strength
   const calculatePasswordStrength = (pwd) => {
@@ -33,7 +40,6 @@ const Register = () => {
     }
 
     if (pwd.length >= 8) strength += 20;
-    else if (pwd.length >= 6) strength += 10;
     else feedback.push('At least 8 characters');
 
     if (/[a-z]/.test(pwd)) strength += 20;
@@ -45,8 +51,8 @@ const Register = () => {
     if (/[0-9]/.test(pwd)) strength += 20;
     else feedback.push('Add number');
 
-    if (/[^a-zA-Z0-9]/.test(pwd)) strength += 20;
-    else feedback.push('Add special character');
+    if (/[@$!%*?&]/.test(pwd)) strength += 20;
+    else feedback.push('Add special character (@$!%*?&)');
 
     setPasswordStrength(strength);
     setPasswordFeedback(feedback.join(' • '));
@@ -68,6 +74,86 @@ const Register = () => {
     return 'Strong';
   };
 
+  // Validate individual field on blur
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'name':
+        if (!value.trim()) {
+          newErrors.name = 'Name is required';
+        } else if (!nameRegex.test(value.trim())) {
+          newErrors.name = 'Name must be 2-50 characters, letters and spaces only';
+        } else {
+          delete newErrors.name;
+        }
+        break;
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Please enter a valid email address';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      case 'phone':
+        if (!value.trim()) {
+          newErrors.phone = 'Phone number is required';
+        } else if (!phoneRegex.test(value)) {
+          newErrors.phone = 'Enter a valid 10-digit Indian mobile number';
+        } else {
+          delete newErrors.phone;
+        }
+        break;
+      case 'dateOfBirth': {
+        if (!value) {
+          newErrors.dateOfBirth = 'Date of birth is required';
+        } else {
+          const dob = new Date(value);
+          const today = new Date();
+          let age = today.getFullYear() - dob.getFullYear();
+          const monthDiff = today.getMonth() - dob.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+          }
+          if (age < 5) {
+            newErrors.dateOfBirth = 'You must be at least 5 years old';
+          } else if (age > 120) {
+            newErrors.dateOfBirth = 'Please enter a valid date of birth';
+          } else if (dob > today) {
+            newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+          } else {
+            delete newErrors.dateOfBirth;
+          }
+        }
+        break;
+      }
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required';
+        } else if (!passwordRegex.test(value)) {
+          newErrors.password = 'Must be 8+ chars with uppercase, lowercase, number & special character';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+      case 'confirmPassword':
+        if (!value) {
+          newErrors.confirmPassword = 'Please confirm your password';
+        } else if (value !== password) {
+          newErrors.confirmPassword = 'Passwords do not match';
+        } else {
+          delete newErrors.confirmPassword;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -77,53 +163,78 @@ const Register = () => {
     }
   };
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (!name || !email || !phone || !age || !password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
+    // Validate all fields
+    const newErrors = {};
+
+    if (!name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (!nameRegex.test(name.trim())) {
+      newErrors.name = 'Name must be 2-50 characters, letters and spaces only';
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
+    if (!phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!phoneRegex.test(phone)) {
+      newErrors.phone = 'Enter a valid 10-digit Indian mobile number';
     }
 
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      setError('Password must contain uppercase, lowercase, and numbers');
-      return;
+    if (!dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      if (age < 5) {
+        newErrors.dateOfBirth = 'You must be at least 5 years old';
+      } else if (age > 120) {
+        newErrors.dateOfBirth = 'Please enter a valid date of birth';
+      } else if (dob > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (!passwordRegex.test(password)) {
+      newErrors.password = 'Must be 8+ chars with uppercase, lowercase, number & special character';
     }
 
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(phone)) {
-      setError('Phone number must be 10 digits');
-      return;
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    const ageNum = parseInt(age);
-    if (isNaN(ageNum) || ageNum < 5 || ageNum > 120) {
-      setError('Please enter a valid age between 5 and 120');
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      setError('Please fix the errors below');
       return;
     }
 
     setLoading(true);
 
     try {
-      await register({ name, email, phone, age: ageNum, password });
+      await register({ name: name.trim(), email, phone, dateOfBirth, password });
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -188,7 +299,7 @@ const Register = () => {
 
             {/* Input Fields */}
             <form onSubmit={handleSubmit} className="space-y-4 flex flex-col max-w-md">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Full Name</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">person</span>
@@ -197,13 +308,17 @@ const Register = () => {
                     name="name"
                     value={name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="John Doe"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                      errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
                 </div>
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Email Address</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">mail</span>
@@ -212,14 +327,18 @@ const Register = () => {
                     name="email"
                     value={email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="john@example.com"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                      errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
                 </div>
+                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   <label className="text-slate-700 text-sm font-semibold">Phone</label>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">phone</span>
@@ -228,29 +347,38 @@ const Register = () => {
                       name="phone"
                       value={phone}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       placeholder="9876543210"
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                      maxLength={10}
+                      className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                        errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                      }`}
                     />
                   </div>
+                  {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-700 text-sm font-semibold">Age</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-700 text-sm font-semibold">Date of Birth</label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">cake</span>
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">calendar_month</span>
                     <input
-                      type="number"
-                      name="age"
-                      value={age}
+                      type="date"
+                      name="dateOfBirth"
+                      value={dateOfBirth}
                       onChange={handleChange}
-                      placeholder="25"
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                      onBlur={handleBlur}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-4 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                        errors.dateOfBirth ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                      }`}
                     />
                   </div>
+                  {errors.dateOfBirth && <p className="text-xs text-red-500 mt-1">{errors.dateOfBirth}</p>}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Password</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
@@ -259,8 +387,11 @@ const Register = () => {
                     name="password"
                     value={password}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-900 h-12 pl-11 pr-12 placeholder:text-slate-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-12 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
+                      errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'
+                    }`}
                   />
                   <button
                     type="button"
@@ -272,8 +403,9 @@ const Register = () => {
                     </span>
                   </button>
                 </div>
+                {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                 {password && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-1">
                     {/* Password Strength Bar */}
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -293,7 +425,7 @@ const Register = () => {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-slate-700 text-sm font-semibold">Confirm Password</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">lock</span>
@@ -302,6 +434,7 @@ const Register = () => {
                     name="confirmPassword"
                     value={confirmPassword}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="••••••••"
                     className={`w-full rounded-lg border bg-slate-50 text-slate-900 h-12 pl-11 pr-12 placeholder:text-slate-400 focus:ring-1 outline-none transition-all text-sm ${
                       confirmPassword && password !== confirmPassword
@@ -322,7 +455,7 @@ const Register = () => {
                   </button>
                 </div>
                 {confirmPassword && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-1">
                     {password === confirmPassword ? (
                       <>
                         <span className="material-symbols-outlined text-green-500 text-xl">check_circle</span>

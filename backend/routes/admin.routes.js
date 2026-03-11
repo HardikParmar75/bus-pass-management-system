@@ -3,7 +3,7 @@ const router = express.Router();
 const { createAdmin, getAllAdmins, getAdminById, updateAdmin, deleteAdmin, toggleAdminStatus } = require('../controllers/admin.controller.js');
 const { loginAdmin, changeAdminPassword } = require('../controllers/adminAuth.controller.js');
 const { getAllPasses, approvePass, rejectPass, verifyPass } = require('../controllers/busPass.controller.js');
-const { protect, protectAdmin, adminOnly, superAdminOnly } = require('../middleware/auth.js');
+const { protect, protectAdmin, adminOnly, superAdminOnly, anyAdminRole } = require('../middleware/auth.js');
 
 // ==================== Authentication Routes ====================
 // Public routes (no authentication required)
@@ -11,7 +11,7 @@ router.post('/register', createAdmin);
 router.post('/login', loginAdmin);
 
 // ==================== Admin Profile Routes ====================
-// Get current admin profile
+// Get current admin profile (any admin role)
 router.get('/profile', protect, (req, res) => {
   res.json({
     success: true,
@@ -23,22 +23,19 @@ router.get('/profile', protect, (req, res) => {
   });
 });
 
-// Change password (protected)
+// Change password (any admin role)
 router.put('/change-password', protect, changeAdminPassword);
+
+// ==================== Bus Pass Verification ====================
+// Verify a bus pass - accessible by ALL admin roles (admin, superadmin, conductor)
+router.post('/bus-passes/verify', protectAdmin, anyAdminRole, verifyPass);
 
 // ==================== Bus Pass Management Routes ====================
 // (MUST be before /:id to avoid wildcard conflict)
-// Get all bus passes (with optional ?status=pending filter)
-router.get('/bus-passes', protectAdmin, getAllPasses);
-
-// Approve a pending bus pass
-router.patch('/bus-passes/:id/approve', protectAdmin, approvePass);
-
-// Reject a pending bus pass
-router.patch('/bus-passes/:id/reject', protectAdmin, rejectPass);
-
-// Verify a bus pass by QR token or 16-char code
-router.post('/bus-passes/verify', protectAdmin, verifyPass);
+// These routes are restricted to admin and superadmin only (NOT conductor)
+router.get('/bus-passes', protectAdmin, adminOnly, getAllPasses);
+router.patch('/bus-passes/:id/approve', protectAdmin, adminOnly, approvePass);
+router.patch('/bus-passes/:id/reject', protectAdmin, adminOnly, rejectPass);
 
 // ==================== Admin Management Routes ====================
 // Get all admins (superadmin only)

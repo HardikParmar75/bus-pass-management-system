@@ -7,19 +7,77 @@ const Login = () => {
     email: '',
     password: '',
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const { email, password } = formData;
 
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Please enter a valid email address';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required';
+        } else if (value.length < 6) {
+          newErrors.password = 'Password must be at least 6 characters';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const newErrors = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -68,7 +126,7 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide flex items-center gap-2">
                 Official Admin Email
               </label>
@@ -78,15 +136,19 @@ const Login = () => {
                   name="email"
                   value={email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                   placeholder="e.g. admin@transport.gov"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.email ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </div>
 
             {/* Password Field */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <label className="text-[#101318] text-sm font-semibold tracking-wide">
                 Password
               </label>
@@ -96,11 +158,15 @@ const Login = () => {
                   name="password"
                   value={password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                   placeholder="••••••••"
-                  className="flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-[#d4d9e2] bg-white focus:border-primary h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all"
+                  className={`flex w-full rounded-lg text-[#101318] focus:outline-0 focus:ring-2 focus:ring-primary/20 border bg-white h-12 placeholder:text-[#a1abbd] p-[15px] text-sm font-normal transition-all ${
+                    errors.password ? 'border-red-500 focus:border-red-500' : 'border-[#d4d9e2] focus:border-primary'
+                  }`}
                 />
               </div>
+              {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
             </div>
 
             {/* Action Button */}

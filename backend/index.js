@@ -23,7 +23,8 @@ const corsOptions = {
       "http://10.183.181.187:5173",
       "https://bus-pass-management-system-1.onrender.com",
       "https://bus-pass-management-system-user-frontend.onrender.com",
-      /^http:\/\/127\.0\.0\.1:\d+$/, // Allow localhost with any port
+      /^http:\/\/localhost:\d+$/, // Allow localhost with any port
+      /^http:\/\/127\.0\.0\.1:\d+$/, // Allow 127.0.0.1 with any port
       /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Allow local network IPs (192.168.x.x)
       /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Allow 10.x.x.x network
       /^http:\/\/172\.(1[6-9]|2[0-9]|3[01])\.\d+\.\d+:\d+$/, // Allow 172.16-31.x.x network

@@ -18,6 +18,10 @@ const Dashboard = () => {
   const scannerRef = useRef(null);
   const navigate = useNavigate();
 
+  const role = profile?.role || user?.role || 'admin';
+  const isConductor = role === 'conductor';
+  const isAdmin = role === 'admin' || role === 'superadmin';
+
   const getAuthHeaders = () => {
     const u = getCurrentUser();
     return {
@@ -27,6 +31,7 @@ const Dashboard = () => {
   };
 
   const fetchPasses = async (status) => {
+    if (isConductor) return; // Conductors don't fetch passes
     try {
       const url = status
         ? `${API_URL}/api/admin/bus-passes?status=${status}`
@@ -56,10 +61,10 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && isAdmin) {
       fetchPasses(activeTab === 'all' ? '' : activeTab);
     }
-  }, [activeTab, loading]);
+  }, [activeTab, loading, profile]);
 
   const handleLogout = () => {
     logout();
@@ -160,9 +165,10 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch all passes for stats (independent of tab filter)
+  // Fetch all passes for stats (independent of tab filter) - only for admin/superadmin
   const [allStats, setAllStats] = useState({ total: 0, active: 0, pending: 0 });
   useEffect(() => {
+    if (isConductor) return;
     const fetchStats = async () => {
       try {
         const res = await fetch(`${API_URL}/api/admin/bus-passes`, { headers: getAuthHeaders() });
@@ -179,8 +185,8 @@ const Dashboard = () => {
         console.error(err);
       }
     };
-    if (!loading) fetchStats();
-  }, [loading, passes]);
+    if (!loading && isAdmin) fetchStats();
+  }, [loading, passes, profile]);
 
   if (loading) {
     return (
@@ -206,6 +212,21 @@ const Dashboard = () => {
     );
   };
 
+  const getRoleBadge = () => {
+    const roleMap = {
+      superadmin: { bg: 'bg-purple-100 text-purple-800', label: 'Super Admin', icon: 'shield' },
+      admin: { bg: 'bg-blue-100 text-blue-800', label: 'Admin', icon: 'admin_panel_settings' },
+      conductor: { bg: 'bg-teal-100 text-teal-800', label: 'Conductor', icon: 'badge' },
+    };
+    const r = roleMap[role] || roleMap.admin;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${r.bg}`}>
+        <span className="material-symbols-outlined text-sm">{r.icon}</span>
+        {r.label}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background-light font-display">
       {/* Navigation */}
@@ -217,16 +238,21 @@ const Dashboard = () => {
             </div>
             <div>
               <h1 className="text-primary text-base sm:text-lg font-bold tracking-tight">Bus Pass Management</h1>
-              <p className="text-[#5c6b8a] text-xs hidden sm:block">Admin Portal</p>
+              <p className="text-[#5c6b8a] text-xs hidden sm:block">
+                {isConductor ? 'Conductor Portal' : 'Admin Portal'}
+              </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-colors"
-          >
-            <span>Logout</span>
-            <span className="material-symbols-outlined text-base sm:text-lg">logout</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {getRoleBadge()}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-colors"
+            >
+              <span>Logout</span>
+              <span className="material-symbols-outlined text-base sm:text-lg">logout</span>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -246,7 +272,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex items-center gap-2 text-[#5c6b8a]">
                   <span className="material-symbols-outlined text-sm">badge</span>
-                  <span className="text-sm"><strong className="text-[#101318]">Role:</strong> {user?.role || profile?.role}</span>
+                  <span className="text-sm"><strong className="text-[#101318]">Role:</strong> {getRoleBadge()}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[#5c6b8a]">
                   <span className="material-symbols-outlined text-sm">check_circle</span>
@@ -262,272 +288,397 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-5 sm:mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-blue-600 text-lg sm:text-2xl">confirmation_number</span>
-              </div>
-            </div>
-            <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Total Passes</h3>
-            <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.total}</p>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-50 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-green-600 text-lg sm:text-2xl">check_circle</span>
-              </div>
-            </div>
-            <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Active</h3>
-            <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.active}</p>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-orange-50 rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-orange-600 text-lg sm:text-2xl">pending</span>
-              </div>
-            </div>
-            <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Pending</h3>
-            <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.pending}</p>
-          </div>
-        </div>
-
-        {/* Bus Passes Table */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 mb-5 sm:mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-            <h3 className="text-base sm:text-lg font-semibold text-[#101318]">Bus Pass Requests</h3>
-            <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-              {['pending', 'active', 'rejected', 'all'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                    activeTab === tab
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {passes.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <span className="material-symbols-outlined text-4xl mb-2 block">inbox</span>
-              <p>No {activeTab === 'all' ? '' : activeTab} pass requests found.</p>
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">User</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Route</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Type</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Price</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Requested</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {passes.map((pass) => (
-                      <tr key={pass._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-800 font-medium">{pass.user?.name || '—'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{pass.user?.email || '—'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {pass.source && pass.destination ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span>{pass.source}</span>
-                              <span className="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
-                              <span>{pass.destination}</span>
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 capitalize">{pass.passType}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600 font-medium">{pass.price}</td>
-                        <td className="px-4 py-3 text-sm">{statusBadge(pass.status)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{new Date(pass.createdAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {pass.status === 'pending' ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleApprove(pass._id)}
-                                disabled={actionLoading === pass._id}
-                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50"
-                              >
-                                {actionLoading === pass._id ? '...' : 'Approve'}
-                              </button>
-                              <button
-                                onClick={() => handleReject(pass._id)}
-                                disabled={actionLoading === pass._id}
-                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold disabled:opacity-50"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          ) : pass.status === 'active' && pass.validTill ? (
-                            <span className="text-xs text-gray-500">Valid till {new Date(pass.validTill).toLocaleDateString()}</span>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile/Tablet Cards */}
-              <div className="lg:hidden space-y-3">
-                {passes.map((pass) => (
-                  <div key={pass._id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-900 text-sm">{pass.user?.name || '—'}</span>
-                      {statusBadge(pass.status)}
-                    </div>
-                    <p className="text-xs text-gray-500 mb-2">{pass.user?.email || '—'}</p>
-
-                    {/* Route Info */}
-                    {pass.source && pass.destination && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 rounded px-2 py-1.5">
-                        <span className="material-symbols-outlined text-sm text-primary">location_on</span>
-                        <span>{pass.source}</span>
-                        <span className="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
-                        <span>{pass.destination}</span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-3">
-                      <div>
-                        <span className="text-gray-400 block">Type</span>
-                        <span className="font-medium capitalize">{pass.passType}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-400 block">Price</span>
-                        <span className="font-medium">{pass.price}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-400 block">Requested</span>
-                        <span className="font-medium">{new Date(pass.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-
-                    {pass.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(pass._id)}
-                          disabled={actionLoading === pass._id}
-                          className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
-                        >
-                          {actionLoading === pass._id ? '...' : 'Approve'}
-                        </button>
-                        <button
-                          onClick={() => handleReject(pass._id)}
-                          disabled={actionLoading === pass._id}
-                          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                    {pass.status === 'active' && pass.validTill && (
-                      <p className="text-xs text-gray-500">Valid till {new Date(pass.validTill).toLocaleDateString()}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Verify Pass Card */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#101318]">Verify Bus Pass</h3>
-          <p className="text-xs sm:text-sm text-gray-500 mb-4">Enter a 16-character code, paste a JWT token, or scan the QR code to verify a pass.</p>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-            <div className="flex-1">
-              <label className="text-sm text-slate-600 block mb-1">Code or Token</label>
-              <input
-                value={verifyInput}
-                onChange={(e) => setVerifyInput(e.target.value)}
-                placeholder="Enter 16-char code or JWT token..."
-                className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-              />
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                onClick={handleVerify}
-                className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
-              >
-                Verify
-              </button>
-              <button
-                onClick={scanning ? stopScanner : startScanner}
-                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                  scanning
-                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                    : 'bg-gray-800 hover:bg-gray-900 text-white'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">{scanning ? 'stop' : 'qr_code_scanner'}</span>
-                {scanning ? 'Stop' : 'Scan QR'}
-              </button>
-            </div>
-          </div>
-
-          {/* QR Scanner View */}
-          {scanning && (
-            <div className="mt-4 flex justify-center">
-              <div id="qr-reader" className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-lg overflow-hidden border-2 border-gray-300"></div>
-            </div>
-          )}
-
-          {verifyResult && (
-            <div className={`mt-4 p-4 rounded-lg ${verifyResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-              {verifyResult.ok ? (
-                <div className="space-y-1">
-                  <p className="text-green-800 font-semibold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">verified</span>
-                    Pass Verified Successfully
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-sm">
-                    <p><strong>Name:</strong> {verifyResult.data.userName}</p>
-                    <p><strong>Email:</strong> {verifyResult.data.userEmail}</p>
-                    <p><strong>Type:</strong> <span className="capitalize">{verifyResult.data.passType}</span></p>
-                    <p><strong>Valid Till:</strong> {new Date(verifyResult.data.validTill).toLocaleDateString()}</p>
-                    <p><strong>Status:</strong> {verifyResult.data.status}</p>
-                    <p><strong>Phone:</strong> {verifyResult.data.userPhone || '—'}</p>
-                    {verifyResult.data.source && (
-                      <p className="sm:col-span-2">
-                        <strong>Route:</strong>{' '}
-                        <span className="inline-flex items-center gap-1">
-                          {verifyResult.data.source}
-                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                          {verifyResult.data.destination}
-                        </span>
-                      </p>
-                    )}
-                  </div>
+        {/* ==================== CONDUCTOR VIEW ==================== */}
+        {isConductor && (
+          <div className="space-y-5 sm:space-y-6">
+            {/* Conductor Info Banner */}
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-teal-600 text-2xl mt-0.5">info</span>
+                <div>
+                  <h3 className="font-semibold text-teal-900 mb-1">Conductor Mode</h3>
+                  <p className="text-sm text-teal-700">You can verify bus passes by scanning QR codes or entering verification codes. Use the section below to check if a passenger's pass is valid.</p>
                 </div>
-              ) : (
-                <p className="text-red-700 font-medium flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">error</span>
-                  {verifyResult.error}
-                </p>
+              </div>
+            </div>
+
+            {/* Verify Pass Card - Full Width for Conductor */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-primary text-2xl">qr_code_scanner</span>
+                <h3 className="text-lg sm:text-xl font-bold text-[#101318]">Verify Bus Pass</h3>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-500 mb-4">Scan the passenger's QR code or enter their 16-character verification code.</p>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <div className="flex-1">
+                  <label className="text-sm text-slate-600 block mb-1">Code or Token</label>
+                  <input
+                    value={verifyInput}
+                    onChange={(e) => setVerifyInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                    placeholder="Enter 16-char code or JWT token..."
+                    className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 sm:gap-3">
+                  <button
+                    onClick={handleVerify}
+                    className="flex-1 sm:flex-none px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Verify
+                  </button>
+                  <button
+                    onClick={scanning ? stopScanner : startScanner}
+                    className={`flex-1 sm:flex-none px-4 py-3 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                      scanning
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-gray-800 hover:bg-gray-900 text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">{scanning ? 'stop' : 'qr_code_scanner'}</span>
+                    {scanning ? 'Stop' : 'Scan QR'}
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Scanner View */}
+              {scanning && (
+                <div className="mt-4 flex justify-center">
+                  <div id="qr-reader" className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-lg overflow-hidden border-2 border-gray-300"></div>
+                </div>
+              )}
+
+              {verifyResult && (
+                <div className={`mt-4 p-4 sm:p-6 rounded-lg ${verifyResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {verifyResult.ok ? (
+                    <div className="space-y-3">
+                      <p className="text-green-800 font-bold text-lg flex items-center gap-2">
+                        <span className="material-symbols-outlined text-2xl">verified</span>
+                        Pass Verified Successfully
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-sm">
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Passenger Name</p>
+                          <p className="font-semibold text-gray-900">{verifyResult.data.userName}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Phone</p>
+                          <p className="font-semibold text-gray-900">{verifyResult.data.userPhone || '—'}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Pass Type</p>
+                          <p className="font-semibold text-gray-900 capitalize">{verifyResult.data.passType}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Valid Till</p>
+                          <p className="font-semibold text-gray-900">{new Date(verifyResult.data.validTill).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        {verifyResult.data.source && (
+                          <div className="sm:col-span-2 bg-white/60 rounded-lg p-3">
+                            <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Route</p>
+                            <p className="font-semibold text-gray-900 flex items-center gap-2">
+                              {verifyResult.data.source}
+                              <span className="material-symbols-outlined text-sm text-gray-400">arrow_forward</span>
+                              {verifyResult.data.destination}
+                            </p>
+                          </div>
+                        )}
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Fare Paid</p>
+                          <p className="font-semibold text-gray-900">{verifyResult.data.price}</p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Status</p>
+                          <p className="font-semibold text-green-700 capitalize">{verifyResult.data.status}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-red-700 font-medium flex items-center gap-2 text-lg">
+                      <span className="material-symbols-outlined text-2xl">error</span>
+                      {verifyResult.error}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ==================== ADMIN / SUPERADMIN VIEW ==================== */}
+        {isAdmin && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-5 sm:mb-6">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-blue-600 text-lg sm:text-2xl">confirmation_number</span>
+                  </div>
+                </div>
+                <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Total Passes</h3>
+                <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.total}</p>
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-50 rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-green-600 text-lg sm:text-2xl">check_circle</span>
+                  </div>
+                </div>
+                <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Active</h3>
+                <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.active}</p>
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 sm:p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 bg-orange-50 rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-orange-600 text-lg sm:text-2xl">pending</span>
+                  </div>
+                </div>
+                <h3 className="text-[#5c6b8a] text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Pending</h3>
+                <p className="text-xl sm:text-3xl font-bold text-primary">{allStats.pending}</p>
+              </div>
+            </div>
+
+            {/* Bus Passes Table */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 mb-5 sm:mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-[#101318]">Bus Pass Requests</h3>
+                <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                  {['pending', 'active', 'rejected', 'all'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                        activeTab === tab
+                          ? 'bg-primary text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {passes.length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <span className="material-symbols-outlined text-4xl mb-2 block">inbox</span>
+                  <p>No {activeTab === 'all' ? '' : activeTab} pass requests found.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">User</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Route</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Type</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Price</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Requested</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {passes.map((pass) => (
+                          <tr key={pass._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-sm text-gray-800 font-medium">{pass.user?.name || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{pass.user?.email || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {pass.source && pass.destination ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span>{pass.source}</span>
+                                  <span className="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
+                                  <span>{pass.destination}</span>
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 capitalize">{pass.passType}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600 font-medium">{pass.price}</td>
+                            <td className="px-4 py-3 text-sm">{statusBadge(pass.status)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{new Date(pass.createdAt).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm">
+                              {pass.status === 'pending' ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleApprove(pass._id)}
+                                    disabled={actionLoading === pass._id}
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50"
+                                  >
+                                    {actionLoading === pass._id ? '...' : 'Approve'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleReject(pass._id)}
+                                    disabled={actionLoading === pass._id}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold disabled:opacity-50"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : pass.status === 'active' && pass.validTill ? (
+                                <span className="text-xs text-gray-500">Valid till {new Date(pass.validTill).toLocaleDateString()}</span>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile/Tablet Cards */}
+                  <div className="lg:hidden space-y-3">
+                    {passes.map((pass) => (
+                      <div key={pass._id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-gray-900 text-sm">{pass.user?.name || '—'}</span>
+                          {statusBadge(pass.status)}
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{pass.user?.email || '—'}</p>
+
+                        {/* Route Info */}
+                        {pass.source && pass.destination && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 rounded px-2 py-1.5">
+                            <span className="material-symbols-outlined text-sm text-primary">location_on</span>
+                            <span>{pass.source}</span>
+                            <span className="material-symbols-outlined text-xs text-gray-400">arrow_forward</span>
+                            <span>{pass.destination}</span>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mb-3">
+                          <div>
+                            <span className="text-gray-400 block">Type</span>
+                            <span className="font-medium capitalize">{pass.passType}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Price</span>
+                            <span className="font-medium">{pass.price}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Requested</span>
+                            <span className="font-medium">{new Date(pass.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        {pass.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(pass._id)}
+                              disabled={actionLoading === pass._id}
+                              className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
+                            >
+                              {actionLoading === pass._id ? '...' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={() => handleReject(pass._id)}
+                              disabled={actionLoading === pass._id}
+                              className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {pass.status === 'active' && pass.validTill && (
+                          <p className="text-xs text-gray-500">Valid till {new Date(pass.validTill).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Verify Pass Card for Admin/Superadmin */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#101318]">Verify Bus Pass</h3>
+              <p className="text-xs sm:text-sm text-gray-500 mb-4">Enter a 16-character code, paste a JWT token, or scan the QR code to verify a pass.</p>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <div className="flex-1">
+                  <label className="text-sm text-slate-600 block mb-1">Code or Token</label>
+                  <input
+                    value={verifyInput}
+                    onChange={(e) => setVerifyInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                    placeholder="Enter 16-char code or JWT token..."
+                    className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 sm:gap-3">
+                  <button
+                    onClick={handleVerify}
+                    className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Verify
+                  </button>
+                  <button
+                    onClick={scanning ? stopScanner : startScanner}
+                    className={`flex-1 sm:flex-none px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                      scanning
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-gray-800 hover:bg-gray-900 text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">{scanning ? 'stop' : 'qr_code_scanner'}</span>
+                    {scanning ? 'Stop' : 'Scan QR'}
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Scanner View */}
+              {scanning && (
+                <div className="mt-4 flex justify-center">
+                  <div id="qr-reader" className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-lg overflow-hidden border-2 border-gray-300"></div>
+                </div>
+              )}
+
+              {verifyResult && (
+                <div className={`mt-4 p-4 rounded-lg ${verifyResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {verifyResult.ok ? (
+                    <div className="space-y-1">
+                      <p className="text-green-800 font-semibold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">verified</span>
+                        Pass Verified Successfully
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-sm">
+                        <p><strong>Name:</strong> {verifyResult.data.userName}</p>
+                        <p><strong>Email:</strong> {verifyResult.data.userEmail}</p>
+                        <p><strong>Type:</strong> <span className="capitalize">{verifyResult.data.passType}</span></p>
+                        <p><strong>Valid Till:</strong> {new Date(verifyResult.data.validTill).toLocaleDateString()}</p>
+                        <p><strong>Status:</strong> {verifyResult.data.status}</p>
+                        <p><strong>Phone:</strong> {verifyResult.data.userPhone || '—'}</p>
+                        <p><strong>Fare:</strong> {verifyResult.data.price}</p>
+                        {verifyResult.data.source && (
+                          <p className="sm:col-span-2">
+                            <strong>Route:</strong>{' '}
+                            <span className="inline-flex items-center gap-1">
+                              {verifyResult.data.source}
+                              <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                              {verifyResult.data.destination}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-red-700 font-medium flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg">error</span>
+                      {verifyResult.error}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -12,8 +12,8 @@ const userSchema = new mongoose.Schema({
     phone:{
         type:String
     },
-    age:{
-        type:Number
+    dateOfBirth:{
+        type:Date
     },
     password:{
         type:String

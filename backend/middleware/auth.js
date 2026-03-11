@@ -121,4 +121,13 @@ const superAdminOnly = (req, res, next) => {
   }
 };
 
-module.exports = { protect, protectAdmin, protectUser, adminOnly, superAdminOnly };
+// Allows admin, superadmin, and conductor (any authenticated admin role)
+const anyAdminRole = (req, res, next) => {
+  if (req.admin && ['admin', 'superadmin', 'conductor'].includes(req.admin.role)) {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Not authorized' });
+  }
+};
+
+module.exports = { protect, protectAdmin, protectUser, adminOnly, superAdminOnly, anyAdminRole };

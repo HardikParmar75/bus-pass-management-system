@@ -5,6 +5,10 @@ const { sendPasswordResetEmail } = require('../utils/sendEmail');
 // Store reset codes in memory (use Redis in production)
 const resetCodes = new Map();
 
+// Validation regex patterns
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -12,6 +16,16 @@ const loginUser = async (req, res) => {
     // Validate input
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
+    }
+
+    // Validate email format
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    // Validate password format
+    if (!PASSWORD_REGEX.test(password)) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' });
     }
 
     // Find user by email
@@ -41,7 +55,7 @@ const loginUser = async (req, res) => {
       name: existingUser.name,
       email: existingUser.email,
       phone: existingUser.phone,
-      age: existingUser.age,
+      dateOfBirth: existingUser.dateOfBirth,
       token: generateToken(existingUser._id),
     });
   } catch (error) {
