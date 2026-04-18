@@ -384,6 +384,14 @@ const Dashboard = () => {
                             </p>
                           </div>
                         )}
+                        {verifyResult.data.memberName && (
+                          <div className="sm:col-span-2 bg-white/60 rounded-lg p-3">
+                            <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Family Member</p>
+                            <p className="font-semibold text-gray-900">
+                              {verifyResult.data.memberName} ({verifyResult.data.memberRelation}, {verifyResult.data.memberDOB ? new Date(verifyResult.data.memberDOB).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})
+                            </p>
+                          </div>
+                        )}
                         <div className="bg-white/60 rounded-lg p-3">
                           <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Fare Paid</p>
                           <p className="font-semibold text-gray-900">{verifyResult.data.price}</p>
@@ -477,6 +485,7 @@ const Dashboard = () => {
                         <tr className="border-b border-gray-200">
                           <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">User</th>
                           <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
+                          <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Member</th>
                           <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Route</th>
                           <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Type</th>
                           <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Price</th>
@@ -490,6 +499,17 @@ const Dashboard = () => {
                           <tr key={pass._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 text-sm text-gray-800 font-medium">{pass.user?.name || '—'}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{pass.user?.email || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {pass.memberName ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-xs text-purple-500">person</span>
+                                  <span>{pass.memberName}</span>
+                                  <span className="text-xs text-gray-400">({pass.memberRelation}, {pass.memberDOB ? new Date(pass.memberDOB).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Self</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
                               {pass.source && pass.destination ? (
                                 <span className="inline-flex items-center gap-1">
@@ -542,6 +562,15 @@ const Dashboard = () => {
                           {statusBadge(pass.status)}
                         </div>
                         <p className="text-xs text-gray-500 mb-2">{pass.user?.email || '—'}</p>
+
+                        {/* Family Member Info */}
+                        {pass.memberName && (
+                          <div className="flex items-center gap-1.5 text-xs text-purple-700 mb-2 bg-purple-50 rounded px-2 py-1.5">
+                            <span className="material-symbols-outlined text-sm">person</span>
+                            <span className="font-medium">{pass.memberName}</span>
+                            <span className="text-purple-400">({pass.memberRelation}, {pass.memberDOB ? new Date(pass.memberDOB).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})</span>
+                          </div>
+                        )}
 
                         {/* Route Info */}
                         {pass.source && pass.destination && (
@@ -656,6 +685,12 @@ const Dashboard = () => {
                         <p><strong>Status:</strong> {verifyResult.data.status}</p>
                         <p><strong>Phone:</strong> {verifyResult.data.userPhone || '—'}</p>
                         <p><strong>Fare:</strong> {verifyResult.data.price}</p>
+                        {verifyResult.data.memberName && (
+                          <p className="sm:col-span-2">
+                            <strong>Family Member:</strong>{' '}
+                            {verifyResult.data.memberName} ({verifyResult.data.memberRelation}, {verifyResult.data.memberDOB ? new Date(verifyResult.data.memberDOB).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'})
+                          </p>
+                        )}
                         {verifyResult.data.source && (
                           <p className="sm:col-span-2">
                             <strong>Route:</strong>{' '}

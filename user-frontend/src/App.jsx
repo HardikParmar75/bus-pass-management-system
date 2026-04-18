@@ -4,6 +4,7 @@ import Register from './auth/Register';
 import ForgotPassword from './auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import FamilyPass from './pages/FamilyPass';
 import ProtectedRoute from './auth/ProtectedRoute';
 import RootLayout from './layout/RootLayout';
 import { isAuthenticated } from './auth/authService';
@@ -33,6 +34,7 @@ function App() {
         {/* Protected routes wrapped with layout (Navbar/Footer) */}
         <Route element={<ProtectedRoute><RootLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/family-pass" element={<FamilyPass />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>

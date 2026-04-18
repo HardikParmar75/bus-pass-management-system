@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { buyPass, getUserPasses, verifyPass, getBusStops, getFare } = require("../controllers/busPass.controller");
+const { buyPass, buyFamilyPass, getUserPasses, verifyPass, getBusStops, getFare } = require("../controllers/busPass.controller");
 const { protectUser } = require("../middleware/auth");
 
 // Get available bus stops (public)
@@ -11,6 +11,9 @@ router.get("/fare", getFare);
 
 // Buy a new bus pass (user only)
 router.post("/buy", protectUser, buyPass);
+
+// Buy family passes — one pass per member (user only)
+router.post("/buy-family", protectUser, buyFamilyPass);
 
 // Get all passes for the logged-in user
 router.get("/my-passes", protectUser, getUserPasses);

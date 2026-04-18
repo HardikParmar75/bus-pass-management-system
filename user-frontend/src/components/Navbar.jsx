@@ -47,6 +47,14 @@ const Navbar = () => {
             Dashboard
           </NavLink>
           <NavLink
+            to="/family-pass"
+            className={({ isActive }) =>
+              `text-sm font-semibold ${isActive ? 'text-primary border-b-2 border-primary pb-1' : 'text-slate-700 hover:text-primary'}`
+            }
+          >
+            Family Pass
+          </NavLink>
+          <NavLink
             to="/profile"
             className={({ isActive }) =>
               `text-sm font-semibold ${isActive ? 'text-primary border-b-2 border-primary pb-1' : 'text-slate-700 hover:text-primary'}`
@@ -85,6 +93,15 @@ const Navbar = () => {
             }
           >
             Dashboard
+          </NavLink>
+          <NavLink
+            to="/family-pass"
+            onClick={() => setMenuOpen(false)}
+            className={({ isActive }) =>
+              `block px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-slate-700 hover:bg-slate-100'}`
+            }
+          >
+            Family Pass
           </NavLink>
           <NavLink
             to="/profile"

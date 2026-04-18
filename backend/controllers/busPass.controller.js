@@ -1,4 +1,5 @@
 const busPass = require("../models/busPass.model");
+const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const { generateQR } = require("../utils/qr");
 const crypto = require("crypto");
@@ -170,6 +171,126 @@ const buyPass = async (req, res) => {
   }
 };
 
+// Valid family member relations
+const VALID_RELATIONS = ["Spouse", "Father", "Mother", "Son", "Daughter", "Brother", "Sister", "Other"];
+
+// User buys family passes — creates one pass per member, all as "pending"
+const buyFamilyPass = async (req, res) => {
+  try {
+    const { passType, source, destination, members } = req.body;
+    const userId = req.user._id;
+
+    const duration = PASS_DURATION[passType];
+    if (!duration) {
+      return res.status(400).json({ message: "Invalid pass type" });
+    }
+
+    if (!source || !destination) {
+      return res.status(400).json({ message: "Source and destination are required" });
+    }
+
+    if (source === destination) {
+      return res.status(400).json({ message: "Source and destination cannot be the same" });
+    }
+
+    if (!BUS_STOPS_DATA[source] || !BUS_STOPS_DATA[destination]) {
+      return res.status(400).json({ message: "Invalid bus stop selected" });
+    }
+
+    if (!members || !Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ message: "At least one family member is required" });
+    }
+
+    if (members.length > 10) {
+      return res.status(400).json({ message: "Maximum 10 family members allowed per request" });
+    }
+
+    // Email regex for validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Validate each member
+    for (let i = 0; i < members.length; i++) {
+      const m = members[i];
+      if (!m.name || typeof m.name !== "string" || m.name.trim().length < 2) {
+        return res.status(400).json({ message: `Member ${i + 1}: Name is required (min 2 characters)` });
+      }
+      if (!m.email || !emailRegex.test(m.email.trim())) {
+        return res.status(400).json({ message: `Member ${i + 1}: A valid email is required` });
+      }
+      if (!m.dateOfBirth) {
+        return res.status(400).json({ message: `Member ${i + 1}: Date of birth is required` });
+      }
+      const dob = new Date(m.dateOfBirth);
+      if (isNaN(dob.getTime()) || dob >= new Date()) {
+        return res.status(400).json({ message: `Member ${i + 1}: Invalid date of birth` });
+      }
+      if (!m.relation || !VALID_RELATIONS.includes(m.relation)) {
+        return res.status(400).json({ message: `Member ${i + 1}: Invalid relation. Must be one of: ${VALID_RELATIONS.join(", ")}` });
+      }
+    }
+
+    const pricePerMember = calculateFare(source, destination, passType);
+
+    // Create one pass per family member, auto-creating user accounts if needed
+    const createdPasses = [];
+    for (const member of members) {
+      const memberEmail = member.email.trim().toLowerCase();
+
+      // Find or create user account for the family member
+      let memberUser = await User.findOne({ email: memberEmail });
+      if (!memberUser) {
+        // Auto-create account with a random temporary password
+        // Family member can use "Forgot Password" to set their own password
+        const tempPassword = crypto.randomBytes(6).toString("base64url") + "A1@x";
+        memberUser = await User.create({
+          name: member.name.trim(),
+          email: memberEmail,
+          dateOfBirth: new Date(member.dateOfBirth),
+          password: tempPassword,
+          isActive: true,
+        });
+      }
+
+      const newPass = await busPass.create({
+        user: userId,
+        passType,
+        price: pricePerMember,
+        source,
+        destination,
+        memberName: member.name.trim(),
+        memberEmail: memberEmail,
+        memberUser: memberUser._id,
+        memberDOB: new Date(member.dateOfBirth),
+        memberRelation: member.relation,
+        status: "pending",
+      });
+      createdPasses.push({
+        _id: newPass._id,
+        passType: newPass.passType,
+        price: newPass.price,
+        source: newPass.source,
+        destination: newPass.destination,
+        memberName: newPass.memberName,
+        memberEmail: newPass.memberEmail,
+        memberDOB: newPass.memberDOB,
+        memberRelation: newPass.memberRelation,
+        status: newPass.status,
+        createdAt: newPass.createdAt,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `${createdPasses.length} family pass(es) created successfully. Family members can login with their email and use "Forgot Password" to set their password.`,
+      data: createdPasses,
+      totalPrice: pricePerMember * createdPasses.length,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: "Error buying family pass", error: error.message });
+  }
+};
+
 // Admin approves a pending pass — generates QR, sets validity dates
 const approvePass = async (req, res) => {
   try {
@@ -257,11 +378,14 @@ const rejectPass = async (req, res) => {
   }
 };
 
-// User fetches their own passes
+// User fetches their own passes (including passes where they are a family member)
 const getUserPasses = async (req, res) => {
   try {
     const userId = req.user._id;
-    const passes = await busPass.find({ user: userId }).sort({ createdAt: -1 });
+    const passes = await busPass
+      .find({ $or: [{ user: userId }, { memberUser: userId }] })
+      .populate("user", "name email phone")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: passes });
   } catch (error) {
@@ -344,6 +468,9 @@ const verifyPass = async (req, res) => {
         validFrom: pass.validFrom,
         validTill: pass.validTill,
         status: pass.status,
+        memberName: pass.memberName || null,
+        memberDOB: pass.memberDOB || null,
+        memberRelation: pass.memberRelation || null,
       },
     });
   } catch (error) {
@@ -352,4 +479,4 @@ const verifyPass = async (req, res) => {
   }
 };
 
-module.exports = { buyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass, getBusStops, getFare };
+module.exports = { buyPass, buyFamilyPass, approvePass, rejectPass, getUserPasses, getAllPasses, verifyPass, getBusStops, getFare };

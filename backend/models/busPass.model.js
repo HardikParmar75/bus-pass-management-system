@@ -40,6 +40,28 @@ const busPassSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    memberName: {
+      type: String,
+      default: null,
+    },
+    memberEmail: {
+      type: String,
+      default: null,
+    },
+    memberUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    memberDOB: {
+      type: Date,
+      default: null,
+    },
+    memberRelation: {
+      type: String,
+      enum: ["Self", "Spouse", "Father", "Mother", "Son", "Daughter", "Brother", "Sister", "Other", null],
+      default: null,
+    },
     status: {
       type: String,
       enum: ["pending", "active", "rejected", "expired"],
